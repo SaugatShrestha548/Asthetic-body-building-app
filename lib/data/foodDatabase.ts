@@ -1,0 +1,25 @@
+import { Food } from "@/lib/types";
+
+export const FOOD_DB: Food[] = [
+  { id: "soychunks", name: "Soybean Chunks (dry)", serving: "100 g", cal: 345, protein: 52, carbs: 33, fat: 0.5, fiber: 13 },
+  { id: "paneer", name: "Paneer", serving: "100 g", cal: 265, protein: 18, carbs: 6, fat: 20, fiber: 0 },
+  { id: "milk", name: "Milk", serving: "250 ml", cal: 150, protein: 8, carbs: 12, fat: 8, fiber: 0 },
+  { id: "curd", name: "Curd (Dahi)", serving: "200 g", cal: 122, protein: 11, carbs: 9, fat: 4, fiber: 0 },
+  { id: "greekyogurt", name: "Greek Yogurt", serving: "170 g", cal: 100, protein: 17, carbs: 6, fat: 0.7, fiber: 0 },
+  { id: "egg", name: "Egg (optional)", serving: "1 large", cal: 78, protein: 6, carbs: 0.6, fat: 5, fiber: 0 },
+  { id: "tofu", name: "Tofu", serving: "100 g", cal: 76, protein: 8, carbs: 1.9, fat: 4.8, fiber: 0.3 },
+  { id: "dal", name: "Dal (cooked)", serving: "1 cup", cal: 230, protein: 18, carbs: 40, fat: 0.8, fiber: 16 },
+  { id: "rajma", name: "Rajma (cooked)", serving: "1 cup", cal: 225, protein: 15, carbs: 40, fat: 0.9, fiber: 11 },
+  { id: "chickpeas", name: "Chickpeas (cooked)", serving: "1 cup", cal: 269, protein: 14.5, carbs: 45, fat: 4.2, fiber: 12.5 },
+  { id: "blackbeans", name: "Black Beans (cooked)", serving: "1 cup", cal: 227, protein: 15, carbs: 41, fat: 0.9, fiber: 15 },
+  { id: "peanuts", name: "Peanuts", serving: "30 g", cal: 170, protein: 7, carbs: 5, fat: 14, fiber: 2.5 },
+  { id: "pb", name: "Peanut Butter", serving: "2 tbsp", cal: 190, protein: 8, carbs: 6, fat: 16, fiber: 2 },
+  { id: "flax", name: "Flaxseed", serving: "1 tbsp", cal: 55, protein: 1.9, carbs: 3, fat: 4.3, fiber: 2.8 },
+  { id: "oats", name: "Oats (dry)", serving: "1 cup", cal: 300, protein: 10, carbs: 54, fat: 5, fiber: 8 },
+  { id: "rice", name: "Rice (cooked)", serving: "1 cup", cal: 205, protein: 4.3, carbs: 45, fat: 0.4, fiber: 0.6 },
+  { id: "chapati", name: "Chapati", serving: "1 piece", cal: 120, protein: 3, carbs: 20, fat: 3, fiber: 3 },
+  { id: "banana", name: "Banana", serving: "1 medium", cal: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3.1 },
+  { id: "apple", name: "Apple", serving: "1 medium", cal: 95, protein: 0.5, carbs: 25, fat: 0.3, fiber: 4.4 },
+  { id: "papaya", name: "Papaya", serving: "1 cup", cal: 62, protein: 0.7, carbs: 16, fat: 0.2, fiber: 2.5 },
+  { id: "veg", name: "Seasonal Vegetables (cooked)", serving: "1 cup", cal: 60, protein: 2.5, carbs: 12, fat: 0.5, fiber: 4 },
+];
