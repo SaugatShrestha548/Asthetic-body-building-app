@@ -1,0 +1,15 @@
+{
+  "name": "Aesthetic Body Tracker",
+  "short_name": "Body Tracker",
+  "description": "Bodyweight + backpack training, vegetarian nutrition, and an AI gym trainer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0d0b",
+  "theme_color": "#0a0d0b",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
