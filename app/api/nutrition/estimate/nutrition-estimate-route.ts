@@ -12,16 +12,16 @@ Given a free-text description of a meal (casual language, possibly multiple food
 4. If the description is vague about quantity ("some rice", "a bit of dal"), assume a typical single-adult portion and note that assumption briefly in "notes".
 5. If something in the description isn't food (or is unclear), skip it rather than guessing wildly.
 
-Respond with ONLY valid JSON, no markdown fences, no prose outside the JSON, matching exactly this shape:
+Respond with ONLY valid JSON, matching exactly this shape:
 {"items": [{"name": string, "servingEstimate": string, "cal": number, "protein": number, "carbs": number, "fat": number, "fiber": number}], "notes": string}
 
 "notes" should be one short sentence (or empty string) about any assumptions made — nothing else.`;
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not set on the server. Add it in your environment (.env.local locally, or Project Settings > Environment Variables on Vercel)." },
+      { error: "GEMINI_API_KEY is not set on the server. Add it in your environment (.env.local locally, or Project Settings > Environment Variables on Vercel)." },
       { status: 500 }
     );
   }
@@ -39,36 +39,34 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 800,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: description }],
-      }),
-    });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ role: "user", parts: [{ text: description }] }],
+          // Forces Gemini to return clean JSON directly, no markdown fences to strip.
+          generationConfig: { maxOutputTokens: 800, responseMimeType: "application/json" },
+        }),
+      }
+    );
 
     if (!res.ok) {
       const errText = await res.text();
-      return NextResponse.json({ error: `Anthropic API error: ${errText}` }, { status: res.status });
+      return NextResponse.json({ error: `Gemini API error: ${errText}` }, { status: res.status });
     }
 
     const data = await res.json();
-    const text = (data.content || [])
-      .map((b: { type: string; text?: string }) => (b.type === "text" ? b.text : ""))
+    const text = (data.candidates?.[0]?.content?.parts || [])
+      .map((p: { text?: string }) => p.text || "")
       .join("\n")
       .trim();
 
-    const cleaned = text.replace(/```json|```/g, "").trim();
     let parsed;
     try {
-      parsed = JSON.parse(cleaned);
+      parsed = JSON.parse(text);
     } catch {
       return NextResponse.json({ error: "Couldn't parse that into a nutrition estimate — try rephrasing (e.g. '2 chapati, dal, and a bowl of curd')." }, { status: 502 });
     }
@@ -79,6 +77,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ items: parsed.items, notes: parsed.notes || "" });
   } catch (err) {
-    return NextResponse.json({ error: `Failed to reach Anthropic API: ${String(err)}` }, { status: 502 });
+    return NextResponse.json({ error: `Failed to reach Gemini API: ${String(err)}` }, { status: 502 });
   }
 }
