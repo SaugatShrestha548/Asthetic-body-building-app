@@ -22,8 +22,10 @@ export function useAppState(): [AppState | null, React.Dispatch<React.SetStateAc
     // has no access to window during SSR), so an effect — not lazy useState init — is required.
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
+      const defaults = emptyState();
+      const parsed = raw ? JSON.parse(raw) : null;
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setState(raw ? { ...emptyState(), ...JSON.parse(raw) } : emptyState());
+      setState(parsed ? { ...defaults, ...parsed, settings: { ...defaults.settings, ...parsed.settings } } : defaults);
     } catch {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setState(emptyState());

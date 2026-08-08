@@ -8,7 +8,7 @@ export const fmt = (n: number, d = 0): string => (isNaN(n) ? "0" : Number(n).toF
 export const uid = (): string => Math.random().toString(36).slice(2, 10);
 
 export const emptyState = (): AppState => ({
-  settings: { theme: "dark", proteinGoal: 100, calorieGoal: 2200, waterGoal: 3000, units: "metric" },
+  settings: { theme: "dark", proteinGoal: 100, calorieGoal: 2200, waterGoal: 3000, bottleSize: 500, units: "metric" },
   weightLog: [],
   measurements: [],
   meals: {},

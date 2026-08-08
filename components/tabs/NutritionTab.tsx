@@ -20,6 +20,7 @@ export default function NutritionTab({
   const [estimateError, setEstimateError] = useState("");
   const [estimateNotes, setEstimateNotes] = useState("");
   const [estimatedItems, setEstimatedItems] = useState<EstimatedFoodItem[] | null>(null);
+  const [waterInput, setWaterInput] = useState("");
 
   const meals = state.meals[today] || [];
   const totals = meals.reduce(
@@ -112,10 +113,29 @@ export default function NutritionTab({
         <div className="w-full h-2 rounded-full mb-3" style={{ background: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }}>
           <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(100, (water / state.settings.waterGoal) * 100)}%`, background: "#38bdf8" }} />
         </div>
-        <div className="flex gap-2">
-          {[250, 500, 750, 1000].map((ml) => (
-            <button key={ml} onClick={() => addWater(ml)} className="flex-1 py-1.5 rounded-lg text-xs font-medium" style={{ background: "rgba(56,189,248,0.14)", color: "#38bdf8" }}>+{ml >= 1000 ? "1L" : `${ml}ml`}</button>
+        <div className="flex gap-2 flex-wrap">
+          {Array.from(new Set([250, 500, state.settings.bottleSize || 500, 1000])).sort((a, b) => a - b).map((ml) => (
+            <button key={ml} onClick={() => addWater(ml)} className="flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-medium" style={{ background: "rgba(56,189,248,0.14)", color: "#38bdf8" }}>
+              +{ml >= 1000 && ml % 1000 === 0 ? `${ml / 1000}L` : `${ml}ml`}
+            </button>
           ))}
+        </div>
+        <div className="flex gap-2 mt-2">
+          <input
+            type="number"
+            value={waterInput}
+            onChange={(e) => setWaterInput(e.target.value)}
+            placeholder="Custom amount (ml)"
+            className="flex-1 rounded-lg px-3 py-1.5 text-xs bg-transparent border"
+            style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", color: theme === "dark" ? "white" : "black" }}
+          />
+          <button
+            onClick={() => { if (+waterInput > 0) { addWater(+waterInput); setWaterInput(""); } }}
+            className="px-4 rounded-lg text-xs font-semibold"
+            style={{ background: "#38bdf8", color: "#052e1e" }}
+          >
+            Add
+          </button>
         </div>
       </Card>
 

@@ -85,6 +85,7 @@ export interface Settings {
   proteinGoal: number;
   calorieGoal: number;
   waterGoal: number;
+  bottleSize: number;
   units: "metric" | "imperial";
 }
 

@@ -35,7 +35,7 @@ export default function AppShell() {
 
   if (!loaded || !state) {
     return (
-      <div className="w-full min-h-screen flex items-center justify-center bg-neutral-950">
+      <div className="w-full h-dvh flex items-center justify-center bg-neutral-950">
         <div className="flex items-center gap-2 text-emerald-400 text-sm"><Dumbbell className="animate-pulse" size={18} /> Loading…</div>
       </div>
     );
@@ -45,12 +45,12 @@ export default function AppShell() {
   const textColor = theme === "dark" ? "#e4e4e7" : "#18181b";
 
   return (
-    <div className="w-full min-h-screen flex justify-center" style={{ background: bg, color: textColor }}>
-      <div className="w-full max-w-md relative">
+    <div className="w-full h-dvh flex justify-center" style={{ background: bg, color: textColor }}>
+      <div className="w-full max-w-md relative flex flex-col h-full">
         <div className="pointer-events-none fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-md h-64 opacity-20 blur-3xl"
           style={{ background: `radial-gradient(circle at 50% 0%, ${ACCENT}, transparent 70%)` }} />
 
-        <header className="sticky top-0 z-10 backdrop-blur-xl px-4 py-3 flex items-center justify-between border-b"
+        <header className="shrink-0 z-10 backdrop-blur-xl px-4 py-3 flex items-center justify-between border-b"
           style={{ background: theme === "dark" ? "rgba(10,13,11,0.75)" : "rgba(244,246,245,0.75)", borderColor: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: ACCENT }}><Dumbbell size={15} color="#052e1e" /></div>
@@ -59,7 +59,7 @@ export default function AppShell() {
           <div className="flex items-center gap-1.5 text-xs text-neutral-400"><Trophy size={13} color="#fbbf24" />{state.xp || 0} XP</div>
         </header>
 
-        <main className="relative px-4 pt-4">
+        <main className="relative flex-1 min-h-0 overflow-y-auto px-4 pt-4">
           {tab === "dashboard" && <Dashboard state={state} theme={theme} goTo={setTab} />}
           {tab === "workout" && <WorkoutTab state={state} setState={setState} theme={theme} />}
           {tab === "nutrition" && <NutritionTab state={state} setState={setState} theme={theme} />}
@@ -70,7 +70,7 @@ export default function AppShell() {
           {tab === "settings" && <SettingsTab state={state} setState={setState} theme={theme} setTheme={setTheme} />}
         </main>
 
-        <nav className="sticky bottom-0 z-10 backdrop-blur-xl border-t flex justify-around py-2 px-1"
+        <nav className="shrink-0 z-10 backdrop-blur-xl border-t flex justify-around py-2 px-1"
           style={{ background: theme === "dark" ? "rgba(10,13,11,0.85)" : "rgba(244,246,245,0.85)", borderColor: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}>
           {TABS.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors">

@@ -45,6 +45,7 @@ export default function SettingsTab({
             { key: "proteinGoal" as const, label: "Protein goal (g)" },
             { key: "calorieGoal" as const, label: "Calorie goal (kcal)" },
             { key: "waterGoal" as const, label: "Water goal (ml)" },
+            { key: "bottleSize" as const, label: "Bottle size (ml)" },
           ].map((g) => (
             <div key={g.key} className="flex items-center justify-between">
               <span className={`text-sm ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"}`}>{g.label}</span>
