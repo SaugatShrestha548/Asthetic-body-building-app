@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Check, Plus, Trophy } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Check, Play, Plus, Timer, Trophy, X } from "lucide-react";
 import { AppState, ExerciseLogEntry, WorkoutSet } from "@/lib/types";
 import { Card, ACCENT } from "@/components/ui/Primitives";
 import { SPLIT, DAY_NAMES } from "@/lib/data/workoutSplit";
@@ -9,16 +9,52 @@ import { getExerciseMeta } from "@/lib/data/exerciseMeta";
 import { todayKey, fmt } from "@/lib/utils";
 import { suggestProgression } from "@/lib/engine/coachEngine";
 
+const REST_SECONDS = 90;
+
+function formatClock(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export default function WorkoutTab({
   state, setState, theme,
 }: { state: AppState; setState: React.Dispatch<React.SetStateAction<AppState>>; theme: "dark" | "light" }) {
   const [dayOffset, setDayOffset] = useState(0);
   const [openInfo, setOpenInfo] = useState<string | null>(null);
+  const [restTimer, setRestTimer] = useState<{ exName: string; remaining: number } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const d = new Date(); d.setDate(d.getDate() + dayOffset);
   const key = todayKey(d);
   const dow = d.getDay();
   const split = SPLIT[dow];
   const log = state.workoutLogs[key] || {};
+  const isToday = dayOffset === 0;
+
+  // Live-tick the session stopwatch and any active rest timer once a second.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!restTimer || restTimer.remaining <= 0) return;
+    const t = setTimeout(() => setRestTimer((r) => (r ? { ...r, remaining: r.remaining - 1 } : r)), 1000);
+    return () => clearTimeout(t);
+  }, [restTimer]);
+
+  const sessionStart = state.sessionStarts[key];
+  const sessionElapsed = sessionStart ? Math.floor((now - sessionStart) / 1000) : 0;
+
+  const startSession = () => setState((s) => ({ ...s, sessionStarts: { ...s.sessionStarts, [key]: Date.now() } }));
+  const endSession = () => setState((s) => {
+    const start = s.sessionStarts[key];
+    const nextStarts = { ...s.sessionStarts };
+    delete nextStarts[key];
+    if (!start) return { ...s, sessionStarts: nextStarts };
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+    return { ...s, sessionStarts: nextStarts, sessionDurations: { ...s.sessionDurations, [key]: (s.sessionDurations[key] || 0) + elapsed } };
+  });
 
   const updateExercise = (exId: string, patch: Partial<ExerciseLogEntry>) => {
     setState((s) => {
@@ -37,6 +73,22 @@ export default function WorkoutTab({
     const ex = log[exId] || { sets: [] as WorkoutSet[] };
     const sets = ex.sets.map((s, i) => (i === idx ? { ...s, ...patch } : s));
     updateExercise(exId, { sets });
+  };
+
+  // Ticking the completion checkbox does three things atomically: flips the set, awards/removes
+  // a small XP amount, and — only when newly completing a set — starts the rest timer. This is
+  // the "tick it off" flow the whole calorie/volume/progression/coach pipeline is built on.
+  const toggleSet = (exId: string, idx: number, exName: string) => {
+    const wasCompleted = !!log[exId]?.sets[idx]?.completed;
+    const nowCompleted = !wasCompleted;
+    setState((s) => {
+      const dayLog = { ...(s.workoutLogs[key] || {}) };
+      const ex: ExerciseLogEntry = dayLog[exId] || { sets: [], difficulty: 5, notes: "" };
+      const sets = ex.sets.map((st, i) => (i === idx ? { ...st, completed: nowCompleted } : st));
+      dayLog[exId] = { ...ex, sets };
+      return { ...s, workoutLogs: { ...s.workoutLogs, [key]: dayLog }, xp: Math.max(0, (s.xp || 0) + (nowCompleted ? 2 : -2)) };
+    });
+    if (nowCompleted) setRestTimer({ exName, remaining: REST_SECONDS });
   };
 
   const volumeFor = (exId: string) => (log[exId]?.sets || []).reduce((sum, s) => sum + (s.reps || 0) * (s.weight || 0), 0);
@@ -63,6 +115,44 @@ export default function WorkoutTab({
           <button onClick={() => setDayOffset((o) => o + 1)} className="px-2.5 py-1 rounded-lg text-xs" style={{ background: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}>▶</button>
         </div>
       </div>
+
+      {isToday && !split.rest && (
+        <Card theme={theme}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Timer size={16} color={ACCENT} />
+              <div>
+                <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-neutral-900"}`}>
+                  {sessionStart ? formatClock(sessionElapsed) : "Session not started"}
+                </p>
+                <p className="text-[10px] text-neutral-400">{sessionStart ? "Live session time" : "Start when you begin training"}</p>
+              </div>
+            </div>
+            {sessionStart ? (
+              <button onClick={endSession} className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1" style={{ background: "rgba(248,113,113,0.14)", color: "#f87171" }}>
+                <X size={12} />End
+              </button>
+            ) : (
+              <button onClick={startSession} className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1" style={{ background: ACCENT, color: "#052e1e" }}>
+                <Play size={12} />Start Workout
+              </button>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {restTimer && restTimer.remaining > 0 && (
+        <Card theme={theme} className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-neutral-400">Resting after {restTimer.exName}</p>
+            <p className="text-xl font-bold" style={{ color: ACCENT }}>{formatClock(restTimer.remaining)}</p>
+          </div>
+          <div className="flex gap-1.5">
+            <button onClick={() => setRestTimer((r) => (r ? { ...r, remaining: r.remaining + 15 } : r))} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium" style={{ background: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>+15s</button>
+            <button onClick={() => setRestTimer(null)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium" style={{ background: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>Skip</button>
+          </div>
+        </Card>
+      )}
 
       <Card theme={theme}>
         <p className="text-xs text-neutral-400">{DAY_NAMES[dow]}</p>
@@ -133,7 +223,7 @@ export default function WorkoutTab({
                     <input type="number" value={s.weight} onChange={(e) => updateSet(ex.id, i, { weight: +e.target.value })}
                       className="w-14 rounded-lg px-2 py-1 bg-transparent border text-center" style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)", color: theme === "dark" ? "white" : "black" }} placeholder="kg" />
                     <span className="text-neutral-500">kg</span>
-                    <button onClick={() => updateSet(ex.id, i, { completed: !s.completed })} className="ml-auto w-6 h-6 rounded-full flex items-center justify-center"
+                    <button onClick={() => toggleSet(ex.id, i, ex.name)} className="ml-auto w-6 h-6 rounded-full flex items-center justify-center"
                       style={{ background: s.completed ? ACCENT : theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>
                       {s.completed && <Check size={13} color="#052e1e" />}
                     </button>

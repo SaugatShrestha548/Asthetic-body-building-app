@@ -10,7 +10,12 @@ import { todayKey, fmt, uid } from "@/lib/utils";
 export default function NutritionTab({
   state, setState, theme,
 }: { state: AppState; setState: React.Dispatch<React.SetStateAction<AppState>>; theme: "dark" | "light" }) {
-  const today = todayKey();
+  const [dayOffset, setDayOffset] = useState(0);
+  const d = new Date(); d.setDate(d.getDate() + dayOffset);
+  const key = todayKey(d);
+  const isToday = dayOffset === 0;
+  const dayLabel = isToday ? "Today" : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+
   const [query, setQuery] = useState("");
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState({ name: "", cal: "", protein: "", carbs: "", fat: "", fiber: "" });
@@ -22,7 +27,7 @@ export default function NutritionTab({
   const [estimatedItems, setEstimatedItems] = useState<EstimatedFoodItem[] | null>(null);
   const [waterInput, setWaterInput] = useState("");
 
-  const meals = state.meals[today] || [];
+  const meals = state.meals[key] || [];
   const totals = meals.reduce(
     (a, m) => ({ cal: a.cal + m.cal, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat, fiber: a.fiber + m.fiber }),
     { cal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
@@ -32,10 +37,10 @@ export default function NutritionTab({
 
   const addMeal = (food: Omit<MealEntry, "id"> & { id?: string }) => {
     const entry: MealEntry = { ...food, id: uid() };
-    setState((s) => ({ ...s, meals: { ...s.meals, [today]: [...(s.meals[today] || []), entry] } }));
+    setState((s) => ({ ...s, meals: { ...s.meals, [key]: [...(s.meals[key] || []), entry] } }));
   };
   const removeMeal = (id: string) =>
-    setState((s) => ({ ...s, meals: { ...s.meals, [today]: (s.meals[today] || []).filter((m) => m.id !== id) } }));
+    setState((s) => ({ ...s, meals: { ...s.meals, [key]: (s.meals[key] || []).filter((m) => m.id !== id) } }));
 
   const addCustom = () => {
     if (!custom.name) return;
@@ -89,12 +94,20 @@ export default function NutritionTab({
     setMealDescription("");
   };
 
-  const water = state.water[today] || 0;
-  const addWater = (ml: number) => setState((s) => ({ ...s, water: { ...s.water, [today]: (s.water[today] || 0) + ml } }));
+  const water = state.water[key] || 0;
+  const addWater = (ml: number) => setState((s) => ({ ...s, water: { ...s.water, [key]: (s.water[key] || 0) + ml } }));
 
   return (
     <div className="space-y-4 pb-4">
-      <h1 className={`text-2xl font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-neutral-900"}`}>Nutrition</h1>
+      <div className="flex items-center justify-between">
+        <h1 className={`text-2xl font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-neutral-900"}`}>Nutrition</h1>
+        <div className="flex gap-1.5">
+          <button onClick={() => setDayOffset((o) => o - 1)} className="px-2.5 py-1 rounded-lg text-xs" style={{ background: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}>◀</button>
+          <button onClick={() => setDayOffset(0)} className="px-2.5 py-1 rounded-lg text-xs" style={{ background: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}>Today</button>
+          <button onClick={() => setDayOffset((o) => o + 1)} className="px-2.5 py-1 rounded-lg text-xs" style={{ background: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}>▶</button>
+        </div>
+      </div>
+      {!isToday && <p className="text-xs text-neutral-400 -mt-2">Viewing {dayLabel} — anything you log here is added to that day&apos;s record.</p>}
 
       <Card theme={theme}>
         <div className="flex items-center justify-around">
@@ -230,16 +243,35 @@ export default function NutritionTab({
       </Card>
 
       <Card theme={theme}>
-        <SectionTitle theme={theme}>Today&apos;s Meals</SectionTitle>
+        <SectionTitle theme={theme}>{dayLabel}&apos;s Food Log</SectionTitle>
         {meals.length === 0 && <p className="text-xs text-neutral-500">No meals logged yet.</p>}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {meals.map((m) => (
-            <div key={m.id} className="flex items-center justify-between text-xs">
-              <span className={theme === "dark" ? "text-neutral-200" : "text-neutral-700"}>{m.name} <span className="text-neutral-500">({fmt(m.protein)}g P)</span></span>
-              <button onClick={() => removeMeal(m.id)}><X size={13} className="text-neutral-500" /></button>
+            <div key={m.id} className="p-2.5 rounded-xl" style={{ background: theme === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <p className={`text-xs font-medium ${theme === "dark" ? "text-white" : "text-black"}`}>{m.name}</p>
+                  {m.serving && <p className="text-[10px] text-neutral-500">{m.serving}</p>}
+                </div>
+                <button onClick={() => removeMeal(m.id)}><X size={13} className="text-neutral-500" /></button>
+              </div>
+              <div className="flex gap-3 text-[10.5px] text-neutral-400">
+                <span>{fmt(m.cal)} kcal</span>
+                <span style={{ color: ACCENT }}>{fmt(m.protein)}g protein</span>
+                <span>{fmt(m.carbs)}g carbs</span>
+                <span>{fmt(m.fat)}g fat</span>
+                <span>{fmt(m.fiber)}g fiber</span>
+              </div>
             </div>
           ))}
         </div>
+        {meals.length > 0 && (
+          <div className="flex gap-3 mt-3 pt-3 border-t text-[11px]" style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}>
+            <span className="text-neutral-400">Total:</span>
+            <span className={theme === "dark" ? "text-white" : "text-black"}>{fmt(totals.cal)} kcal</span>
+            <span style={{ color: ACCENT }}>{fmt(totals.protein)}g protein</span>
+          </div>
+        )}
       </Card>
     </div>
   );

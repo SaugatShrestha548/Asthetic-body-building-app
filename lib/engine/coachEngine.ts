@@ -196,7 +196,7 @@ export function buildContextSummary(state: AppState): string {
           .map(([exId, ex]) => {
             const meta = getExerciseMeta(exId);
             const best = ex.sets.filter((s) => s.completed).map((s) => `${s.reps}x${s.weight}kg`).join(", ");
-            return `${meta?.name || exId} (${best}, difficulty ${ex.difficulty}/10)`;
+            return `${meta?.name || exId} (${best}, difficulty ${ex.difficulty}/10${ex.notes ? `, note: "${ex.notes}"` : ""})`;
           })
           .join("; ")
       : split.rest ? "rest day" : "not logged";

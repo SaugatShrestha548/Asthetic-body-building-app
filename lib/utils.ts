@@ -18,6 +18,8 @@ export const emptyState = (): AppState => ({
   photos: [],
   checkins: {},
   chatHistory: [],
+  sessionStarts: {},
+  sessionDurations: {},
   xp: 0,
 });
 

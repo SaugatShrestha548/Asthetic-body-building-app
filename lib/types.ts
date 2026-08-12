@@ -100,6 +100,8 @@ export interface AppState {
   photos: PhotoEntry[];
   checkins: Record<string, CheckinEntry>;
   chatHistory: ChatMessage[];
+  sessionStarts: Record<string, number>; // date -> timestamp (ms) the workout session started
+  sessionDurations: Record<string, number>; // date -> total seconds of ended session(s) that day
   xp: number;
 }
 

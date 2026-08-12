@@ -33,6 +33,10 @@ export default function StatsTab({ state, theme }: { state: AppState; theme: "da
   );
   const mostTrained = Object.entries(muscleCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
 
+  const durations = Object.values(state.sessionDurations || {}).filter((v) => v > 0);
+  const avgSessionSeconds = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+  const avgSessionLabel = avgSessionSeconds > 0 ? `${Math.floor(avgSessionSeconds / 60)} min` : "—";
+
   return (
     <div className="space-y-4 pb-4">
       <h1 className={`text-2xl font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-neutral-900"}`}>Statistics</h1>
@@ -68,6 +72,7 @@ export default function StatsTab({ state, theme }: { state: AppState; theme: "da
 
       <div className="grid grid-cols-2 gap-3">
         <Card theme={theme}><p className="text-[11px] text-neutral-400">Total Workouts</p><p className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>{totalWorkouts}</p></Card>
+        <Card theme={theme}><p className="text-[11px] text-neutral-400">Avg Workout Time</p><p className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>{avgSessionLabel}</p></Card>
         <Card theme={theme}><p className="text-[11px] text-neutral-400">Most Trained</p><p className={`text-xl font-bold capitalize ${theme === "dark" ? "text-white" : "text-black"}`}>{mostTrained}</p></Card>
         <Card theme={theme}><p className="text-[11px] text-neutral-400">Longest Streak</p><p className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>{calcStreak(state.workoutLogs)}</p></Card>
         <Card theme={theme}><p className="text-[11px] text-neutral-400">Weight Change</p><p className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>{state.weightLog.length > 1 ? fmt(state.weightLog[state.weightLog.length - 1].kg - state.weightLog[0].kg, 1) : "0"} kg</p></Card>

@@ -157,14 +157,20 @@ export default function CoachTab({
 
       <Card theme={theme}>
         <SectionTitle theme={theme}>Ask your Coach</SectionTitle>
+        <button
+          onClick={() => send("Review today's session — tell me if anything looks wrong (form, difficulty spikes, notes I left) and what I should improve next time.")}
+          disabled={loading}
+          className="w-full mb-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+          style={{ background: "rgba(52,211,153,0.14)", color: ACCENT }}
+        >
+          <Trophy size={13} />Review today&apos;s session
+        </button>
+        <div className="flex flex-wrap gap-1.5 mb-2.5">
+          {["Is my form ok on push-ups?", "Should I increase weight?", "Which muscle should I train tomorrow?", "How much protein do I still need today?"].map((q) => (
+            <button key={q} onClick={() => send(q)} disabled={loading} className="text-[10.5px] px-2.5 py-1.5 rounded-full text-left disabled:opacity-50" style={{ background: theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", color: theme === "dark" ? "#a1a1aa" : "#52525b" }}>{q}</button>
+          ))}
+        </div>
         <div className="space-y-2 max-h-72 overflow-y-auto mb-2.5 pr-0.5">
-          {chatHistory.length === 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {["Is my form ok on push-ups?", "Should I increase weight?", "Which muscle should I train tomorrow?", "How much protein do I still need today?"].map((q) => (
-                <button key={q} onClick={() => send(q)} className="text-[10.5px] px-2.5 py-1.5 rounded-full text-left" style={{ background: theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", color: theme === "dark" ? "#a1a1aa" : "#52525b" }}>{q}</button>
-              ))}
-            </div>
-          )}
           {chatHistory.map((m, i) => <ChatBubble key={i} msg={m} theme={theme} />)}
           {loading && <ChatBubble msg={{ role: "assistant", content: "Thinking…" }} theme={theme} />}
         </div>
