@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Check, Play, Plus, Timer, Trophy, X } from "lucide-react";
+import { Check, Play, Plus, Sparkles, Timer, Trophy, X } from "lucide-react";
 import { AppState, ExerciseLogEntry, WorkoutSet } from "@/lib/types";
 import { Card, ACCENT } from "@/components/ui/Primitives";
 import { SPLIT, DAY_NAMES } from "@/lib/data/workoutSplit";
@@ -24,6 +24,8 @@ export default function WorkoutTab({
   const [openInfo, setOpenInfo] = useState<string | null>(null);
   const [restTimer, setRestTimer] = useState<{ exName: string; remaining: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [parsingExId, setParsingExId] = useState<string | null>(null);
+  const [parseError, setParseError] = useState<{ exId: string; message: string } | null>(null);
   const d = new Date(); d.setDate(d.getDate() + dayOffset);
   const key = todayKey(d);
   const dow = d.getDay();
@@ -89,6 +91,45 @@ export default function WorkoutTab({
       return { ...s, workoutLogs: { ...s.workoutLogs, [key]: dayLog }, xp: Math.max(0, (s.xp || 0) + (nowCompleted ? 2 : -2)) };
     });
     if (nowCompleted) setRestTimer({ exName, remaining: REST_SECONDS });
+  };
+
+  // The primary logging flow now: user writes a plain-language note ("3 sets of 12, 5kg
+  // backpack, felt moderate"), this sends it to /api/workout/parse and replaces that
+  // exercise's sets with the structured result (all marked completed) plus a difficulty
+  // guess if the note implied one. Manual tick/reps/weight boxes below still work for
+  // corrections. XP is awarded per newly-logged set, same as manual ticking.
+  const parseNoteToSets = async (exId: string, exName: string, note: string) => {
+    if (!note.trim() || parsingExId) return;
+    setParsingExId(exId);
+    setParseError(null);
+    try {
+      const res = await fetch("/api/workout/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exerciseName: exName, note }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.sets) || data.sets.length === 0) {
+        setParseError({ exId, message: data.error || "Couldn't find sets/reps in that note — try including numbers, e.g. '3 sets of 12, 5kg backpack'." });
+        return;
+      }
+      const newSets: WorkoutSet[] = data.sets.map((s: { reps: number; weight: number }) => ({
+        reps: Math.max(0, Math.round(s.reps || 0)),
+        weight: Math.max(0, s.weight || 0),
+        completed: true,
+      }));
+      setState((s) => {
+        const dayLog = { ...(s.workoutLogs[key] || {}) };
+        const ex: ExerciseLogEntry = dayLog[exId] || { sets: [], difficulty: 5, notes: "" };
+        dayLog[exId] = { ...ex, sets: newSets, notes: note, difficulty: data.difficulty != null ? data.difficulty : ex.difficulty };
+        return { ...s, workoutLogs: { ...s.workoutLogs, [key]: dayLog }, xp: (s.xp || 0) + newSets.length * 2 };
+      });
+      setRestTimer({ exName, remaining: REST_SECONDS });
+    } catch {
+      setParseError({ exId, message: "Couldn't reach the parser — check your connection and try again." });
+    } finally {
+      setParsingExId(null);
+    }
   };
 
   const volumeFor = (exId: string) => (log[exId]?.sets || []).reduce((sum, s) => sum + (s.reps || 0) * (s.weight || 0), 0);
@@ -213,26 +254,58 @@ export default function WorkoutTab({
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                {exLog.sets.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <span className="w-4 text-neutral-500">{i + 1}</span>
-                    <input type="number" value={s.reps} onChange={(e) => updateSet(ex.id, i, { reps: +e.target.value })}
-                      className="w-14 rounded-lg px-2 py-1 bg-transparent border text-center" style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)", color: theme === "dark" ? "white" : "black" }} placeholder="reps" />
-                    <span className="text-neutral-500">reps ×</span>
-                    <input type="number" value={s.weight} onChange={(e) => updateSet(ex.id, i, { weight: +e.target.value })}
-                      className="w-14 rounded-lg px-2 py-1 bg-transparent border text-center" style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)", color: theme === "dark" ? "white" : "black" }} placeholder="kg" />
-                    <span className="text-neutral-500">kg</span>
-                    <button onClick={() => toggleSet(ex.id, i, ex.name)} className="ml-auto w-6 h-6 rounded-full flex items-center justify-center"
-                      style={{ background: s.completed ? ACCENT : theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>
-                      {s.completed && <Check size={13} color="#052e1e" />}
-                    </button>
-                  </div>
-                ))}
-                <button onClick={() => addSet(ex.id)} className="text-[11px] flex items-center gap-1 mt-1" style={{ color: ACCENT }}>
-                  <Plus size={12} /> Add set
-                </button>
-              </div>
+              {/* Primary logging flow: write what you did, AI fills in the structured sets */}
+              <textarea
+                value={exLog.notes}
+                onChange={(e) => updateExercise(ex.id, { notes: e.target.value })}
+                placeholder="Write what you did — e.g. '3 sets of 12, 5kg backpack, felt moderate'"
+                rows={2}
+                className="w-full text-xs rounded-lg px-2.5 py-2 bg-transparent border resize-none"
+                style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", color: theme === "dark" ? "white" : "black" }}
+              />
+              <button
+                onClick={() => parseNoteToSets(ex.id, ex.name, exLog.notes)}
+                disabled={parsingExId === ex.id || !exLog.notes.trim()}
+                className="w-full mt-2 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                style={{ background: ACCENT, color: "#052e1e" }}
+              >
+                <Sparkles size={13} />{parsingExId === ex.id ? "Reading your note…" : "Log with AI"}
+              </button>
+              {parseError?.exId === ex.id && <p className="text-[10.5px] mt-1.5" style={{ color: "#f87171" }}>{parseError.message}</p>}
+
+              {exLog.sets.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                  {exLog.sets.map((s, i) => (
+                    <span key={i} className="text-[10.5px] px-2 py-1 rounded-full flex items-center gap-1" style={{ background: s.completed ? "rgba(52,211,153,0.14)" : theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)", color: s.completed ? ACCENT : "#a1a1aa" }}>
+                      {s.completed && <Check size={10} />}{s.reps} reps × {s.weight}kg
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <details className="mt-2.5">
+                <summary className="text-[10.5px] cursor-pointer select-none" style={{ color: "#a1a1aa" }}>Edit sets manually / add a set</summary>
+                <div className="space-y-1.5 mt-2">
+                  {exLog.sets.map((s, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <span className="w-4 text-neutral-500">{i + 1}</span>
+                      <input type="number" value={s.reps} onChange={(e) => updateSet(ex.id, i, { reps: +e.target.value })}
+                        className="w-14 rounded-lg px-2 py-1 bg-transparent border text-center" style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)", color: theme === "dark" ? "white" : "black" }} placeholder="reps" />
+                      <span className="text-neutral-500">reps ×</span>
+                      <input type="number" value={s.weight} onChange={(e) => updateSet(ex.id, i, { weight: +e.target.value })}
+                        className="w-14 rounded-lg px-2 py-1 bg-transparent border text-center" style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)", color: theme === "dark" ? "white" : "black" }} placeholder="kg" />
+                      <span className="text-neutral-500">kg</span>
+                      <button onClick={() => toggleSet(ex.id, i, ex.name)} className="ml-auto w-6 h-6 rounded-full flex items-center justify-center"
+                        style={{ background: s.completed ? ACCENT : theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>
+                        {s.completed && <Check size={13} color="#052e1e" />}
+                      </button>
+                    </div>
+                  ))}
+                  <button onClick={() => addSet(ex.id)} className="text-[11px] flex items-center gap-1 mt-1" style={{ color: ACCENT }}>
+                    <Plus size={12} /> Add set
+                  </button>
+                </div>
+              </details>
 
               <div className="flex items-center gap-3 mt-2.5">
                 <div className="flex-1">
@@ -240,8 +313,6 @@ export default function WorkoutTab({
                   <input type="range" min="1" max="10" value={exLog.difficulty} onChange={(e) => updateExercise(ex.id, { difficulty: +e.target.value })} className="w-full accent-emerald-400" />
                 </div>
               </div>
-              <input value={exLog.notes} onChange={(e) => updateExercise(ex.id, { notes: e.target.value })} placeholder="Notes..."
-                className="w-full mt-2 text-xs rounded-lg px-2.5 py-1.5 bg-transparent border" style={{ borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", color: theme === "dark" ? "white" : "black" }} />
               {tip && (
                 <p className="mt-2 text-[10.5px] flex items-start gap-1.5" style={{ color: tip.type === "deload" ? "#fbbf24" : ACCENT }}>
                   <Trophy size={11} className="mt-[1px] shrink-0" /> {tip.text}
